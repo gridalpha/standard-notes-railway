@@ -28,6 +28,26 @@ if [ -z "${PUBLIC_FILES_SERVER_URL:-}" ] && [ -n "${RAILWAY_PUBLIC_DOMAIN:-}" ];
   export PUBLIC_FILES_SERVER_URL="https://${RAILWAY_PUBLIC_DOMAIN}"
 fi
 
+# A ${{localstack.RAILWAY_PRIVATE_DOMAIN}} reference renders empty until that
+# service owns a deployment, which is exactly the case on a template's first
+# deploy -- the servers would then publish domain events to "http://:4566" and
+# the workers would sit idle behind a green container. The hostname is
+# deterministic, so repair it here on the value's shape.
+LOCALSTACK_DEFAULT="http://${LOCALSTACK_HOST:-localstack.railway.internal}:4566"
+for prefix in AUTH_SERVER SYNCING_SERVER FILES_SERVER REVISIONS_SERVER; do
+  for suffix in SNS_ENDPOINT SQS_ENDPOINT; do
+    var="${prefix}_${suffix}"
+    case "${!var:-}" in
+      "" | "http://:"* | "http://:") export "$var=$LOCALSTACK_DEFAULT" ;;
+    esac
+  done
+  var="${prefix}_SQS_QUEUE_URL"
+  case "${!var:-}" in
+    "http://:4566"*) export "$var=${LOCALSTACK_DEFAULT}${!var#http://:4566}" ;;
+    "http://localstack:4566"*) export "$var=${LOCALSTACK_DEFAULT}${!var#http://localstack:4566}" ;;
+  esac
+done
+
 # Upstream's docs ask the operator to run this SQL by hand for every account that
 # should have server-side premium features. A template has no manual steps.
 if [ "${GRANT_PRO_PLAN:-true}" = "true" ]; then
