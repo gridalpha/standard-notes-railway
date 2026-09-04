@@ -1,0 +1,29 @@
+{
+	admin off
+	auto_https off
+	servers {
+		trusted_proxies static 100.64.0.0/10 fd00::/8 152.233.0.0/17
+	}
+}
+
+# Railway's edge has no path-based routing and a template can reference only one
+# public domain per service, so Caddy joins the API gateway (:3000) and the files
+# server (:3104) onto a single origin. `handle` blocks run in the order written,
+# not by specificity, so the gateway's one /v1/files route has to come first.
+:{$CADDY_PORT:8080} {
+	handle /v1/files/valet-tokens {
+		reverse_proxy 127.0.0.1:3000
+	}
+
+	handle /v1/files* {
+		reverse_proxy 127.0.0.1:3104
+	}
+
+	handle /v1/shared-vault/files* {
+		reverse_proxy 127.0.0.1:3104
+	}
+
+	handle {
+		reverse_proxy 127.0.0.1:3000
+	}
+}
