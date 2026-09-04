@@ -12,11 +12,11 @@ and their workers — so it deploys on Railway without any manual setup step.
 | Directory | Image | Role |
 |---|---|---|
 | `server/` | `standardnotes/server:latest` + Caddy | the sync server bundle, public |
+| `web/` | `standardnotes/web:latest` | Standard Notes' own web client, pointed at the sync server, public |
 | `localstack/` | `localstack/localstack:3.0` | SNS/SQS event bus between the servers and their workers, private |
 
-Both are built from the repository root, selected with
-`RAILWAY_DOCKERFILE_PATH=server/Dockerfile` and
-`RAILWAY_DOCKERFILE_PATH=localstack/Dockerfile`.
+All three are built from the repository root, selected with
+`RAILWAY_DOCKERFILE_PATH=<dir>/Dockerfile`.
 
 ## What these images change
 
@@ -48,6 +48,13 @@ for the full list. The ones this deployment adds:
 | `GRANT_PRO_PLAN` | `true` | grant every account the `PRO_USER` role and a `PRO_PLAN` subscription |
 | `GRANT_PRO_PLAN_INTERVAL` | `60` | seconds between grant passes |
 | `PUBLIC_FILES_SERVER_URL` | this deployment's public origin | where clients fetch attachments |
+
+The web client takes two of its own:
+
+| Variable | Default | Meaning |
+|---|---|---|
+| `SYNC_SERVER_URL` | none, required | the sync server's public URL; the container refuses to start without it rather than syncing to Standard Notes' hosted service |
+| `FILES_HOST_URL` | `SYNC_SERVER_URL` | fallback attachment host when the server advertises none |
 
 ## Licence
 
