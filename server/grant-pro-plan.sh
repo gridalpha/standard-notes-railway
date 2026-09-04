@@ -30,6 +30,22 @@ FROM users u
 WHERE NOT EXISTS (
   SELECT 1 FROM user_subscriptions us WHERE us.user_uuid = u.uuid
 );
+
+INSERT INTO subscription_settings
+  (uuid, name, value, server_encryption_version, created_at, updated_at, sensitive, user_subscription_uuid)
+SELECT UUID(), d.name, d.value, 0,
+       FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000), FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000), 0, us.uuid
+FROM user_subscriptions us
+CROSS JOIN (
+  SELECT 'FILE_UPLOAD_BYTES_LIMIT' AS name, '107374182400' AS value
+  UNION ALL SELECT 'FILE_UPLOAD_BYTES_USED', '0'
+  UNION ALL SELECT 'MUTE_SIGN_IN_EMAILS', 'not_muted'
+) d
+WHERE us.plan_name = 'PRO_PLAN'
+  AND NOT EXISTS (
+    SELECT 1 FROM subscription_settings ss
+    WHERE ss.user_subscription_uuid = us.uuid AND ss.name = d.name
+  );
 SQLEOF
 
 read -r -d '' STATUS_SQL <<'SQLEOF' || true
@@ -38,6 +54,7 @@ SELECT CONCAT(
   ' pro_role_grants=', (SELECT COUNT(*) FROM user_roles ur
                         JOIN roles r ON r.uuid = ur.role_uuid WHERE r.name = 'PRO_USER'),
   ' subscriptions=', (SELECT COUNT(*) FROM user_subscriptions),
+  ' subscription_settings=', (SELECT COUNT(*) FROM subscription_settings),
   ' roles=', (SELECT GROUP_CONCAT(DISTINCT name ORDER BY name) FROM roles)
 );
 SQLEOF
