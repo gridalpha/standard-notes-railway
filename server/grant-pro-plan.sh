@@ -32,10 +32,26 @@ WHERE NOT EXISTS (
 );
 SQLEOF
 
+read -r -d '' STATUS_SQL <<'SQLEOF' || true
+SELECT CONCAT(
+  'grant-pro-plan: users=', (SELECT COUNT(*) FROM users),
+  ' pro_role_grants=', (SELECT COUNT(*) FROM user_roles ur
+                        JOIN roles r ON r.uuid = ur.role_uuid WHERE r.name = 'PRO_USER'),
+  ' subscriptions=', (SELECT COUNT(*) FROM user_subscriptions),
+  ' roles=', (SELECT GROUP_CONCAT(DISTINCT name ORDER BY name) FROM roles)
+);
+SQLEOF
+
+run_sql() {
+  mysql --protocol=TCP -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USERNAME}" \
+    -D "${DB_DATABASE}" -N -B -e "$1" 2>&1
+}
+
 while true; do
-  if ! mysql --protocol=TCP -h "${DB_HOST}" -P "${DB_PORT}" -u "${DB_USERNAME}" \
-       -D "${DB_DATABASE}" -e "${SQL}" 2>&1; then
+  if ! run_sql "${SQL}"; then
     echo "grant-pro-plan: auth schema not ready yet, retrying in ${INTERVAL}s"
+  else
+    run_sql "${STATUS_SQL}"
   fi
   sleep "${INTERVAL}"
 done
