@@ -31,8 +31,9 @@ WHERE NOT EXISTS (
   SELECT 1 FROM user_subscriptions us WHERE us.user_uuid = u.uuid
 );
 
+-- `sensitive` is a reserved word on MySQL 9, so the identifier has to be quoted.
 INSERT INTO subscription_settings
-  (uuid, name, value, server_encryption_version, created_at, updated_at, sensitive, user_subscription_uuid)
+  (uuid, name, value, server_encryption_version, created_at, updated_at, `sensitive`, user_subscription_uuid)
 SELECT UUID(), d.name, d.value, 0,
        FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000), FLOOR(UNIX_TIMESTAMP(NOW(6)) * 1000000), 0, us.uuid
 FROM user_subscriptions us
